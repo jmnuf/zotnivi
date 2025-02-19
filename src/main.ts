@@ -31,7 +31,7 @@ class NombreYaExisteEnMemoria extends Error {
 
 class NombreNoExistEnMemoria extends Error {
   constructor(instruccion: string, nombre: string) {
-    super("El nombre, " + nombre + ", dado a la instruccion `" + instruccion + "` no existe. Se esperaba un nombre guardado en memoria");
+    super("El nombre, " + nombre + ", dado a la instruccion `" + instruccion + "` no existe. Se esperaba un nombre guardado en memoria. Puedes guardar el nombre en memoria haciendo `reservar " + nombre + ";`");
   }
 }
 
@@ -274,7 +274,7 @@ function ejecutarCodigo(code: string): Result<string, string> {
 }
 
 function App() {
-  const codigoAnterior = localStorage.getItem("zotnivi.code") ?? "empujar 34\nempujar 35\nsumar\nguardar X";
+  const codigoAnterior = localStorage.getItem("zotnivi.code") ?? "reservar X\n  empujar 34\n  empujar 35\n  sumar\nguardar X";
   const pRes = E<HTMLParagraphElement>("p");
   const ejecutarEImprimirResultado = (codigo: string) => {
     const resultado = ejecutarCodigo(codigo);
