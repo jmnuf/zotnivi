@@ -23,6 +23,11 @@ class NombreInvalido extends Error {
     super("El nombre, " + nombre + ", dado a la instruccion `" + instruccion + "` es invalido. Un nombre solo puede empezar con letras sin acento o un _");
   }
 }
+class NombreYaExisteEnMemoria extends Error {
+  constructor(instruccion: string, nombre: string) {
+    super("El nombre, " + nombre + ", dado a la instruccion `" + instruccion + "` ya existe. Se esperaba un nombre no guardado en memoria");
+  }
+}
 
 class NombreNoExistEnMemoria extends Error {
   constructor(instruccion: string, nombre: string) {
@@ -48,21 +53,65 @@ function requiereDosNumeros(instruccion: string, pila: number[]): [number, numbe
 }
 
 function ejecutarCodigo(code: string): Result<string, string> {
-  const tokens: string[] & { peek(): string | undefined; } = code.split(/\s+/).map(x => x.trim()).filter(x => x) as any;
+  const tokens = code.split(/\s+/)
+    .map(x => x.trim())
+    .filter(x => x);
+
   if (tokens.length == 0) return { ok: true, value: "<Programa Vacio>", };
-  tokens.peek = () => tokens[0];
 
   const inicioNombreRegex = /^[a-z_]/i;
   const memoria: Record<string, number> = {};
   const pila: number[] & { peek(): number | undefined; } = [] as any;
   pila.peek = () => pila[pila.length - 1];
+  // TODO: Encontrar una mejorar manera de hacer las funciones peek, pop
+  const peek = () => {
+    if (tokens.length === 0) return undefined;
+    while (tokens.length > 0 && tokens[0] === ";") {
+      tokens.shift();
+    }
+    if (tokens.length === 0) return undefined;
+    let tok = tokens[0];
+    if (tok) {
+      if (tok.includes(";")) {
+        let subtoks = tok.split(";").filter(x => x);
+        tokens.shift();
+        if (subtoks.length === 0) {
+          return peek();
+        }
+        tokens.unshift(...subtoks);
+        tok = tokens[0];
+      }
+      while (tok.endsWith(";")) {
+        tok = tok.substring(0, tok.length - 1);
+      }
+    }
+    return tok;
+  }
+  const pop = () => {
+    let tok = tokens.shift();
+    while (tok && tok === ";") {
+      tok = tokens.shift();
+    }
+    if (tok) {
+      if (tok.includes(";")) {
+        let subtoks = tok.split(";").filter(x => x);
+        if (subtoks.length === 0) return pop();
+        tok = subtoks.shift()!;
+        tokens.unshift(...subtoks);
+      }
+      while (tok.endsWith(";")) {
+        tok = tok.substring(0, tok.length - 1);
+      }
+    }
+    return tok;
+  }
   while (tokens.length > 0) {
-    const tok = tokens.shift()!;
+    const tok = pop()!;
     switch (tok) {
       case "empujar":
       case "push":
         try {
-          const nextToken = tokens.peek();
+          const nextToken = peek();
           if (!nextToken) {
             throw new InstOcupaNumero(tok);
           }
@@ -70,7 +119,7 @@ function ejecutarCodigo(code: string): Result<string, string> {
           if (Number.isNaN(num)) {
             throw new InstOcupaNumero(tok);
           }
-          tokens.shift()!;
+          pop()!;
           pila.push(num);
         } catch (e) {
           // console.log("Tokens:", tokens);
@@ -118,18 +167,50 @@ function ejecutarCodigo(code: string): Result<string, string> {
         }
         break;
 
-      case "guardar":
-      case "store":
+      case "reservar":
+      case "reserve":
         try {
-          const nombre = tokens.peek();
+          const nombre = peek();
           if (!nombre) {
             throw new InstOcupaNombre(tok);
           }
           if (!inicioNombreRegex.test(nombre)) {
             throw new NombreInvalido(tok, nombre);
           }
+          if (nombre in memoria) {
+            throw new NombreYaExisteEnMemoria(tok, nombre);
+          }
+          pop()!;
+          const cantidad = Number(peek());
+          let val = 0;
+          if (!Number.isNaN(cantidad)) {
+            pop();
+            val = cantidad;
+          }
+          memoria[nombre] = val;
+        } catch (e) {
+          return { ok: false, error: (e as Error).message };
+        }
+        break;
+
+      case "guardar":
+      case "store":
+        try {
+          let nombre = peek();
+          if (!nombre) {
+            throw new InstOcupaNombre(tok);
+          }
+          while (nombre.endsWith(";")) {
+            nombre = nombre.substring(0, nombre.length - 1);
+          }
+          if (!inicioNombreRegex.test(nombre)) {
+            throw new NombreInvalido(tok, nombre);
+          }
+          if (!(nombre in memoria)) {
+            throw new NombreNoExistEnMemoria(tok, nombre);
+          }
           const x = requiereUnNumero(tok, pila);
-          tokens.shift()!;
+          pop()!;
           memoria[nombre] = x;
         } catch (e) {
           return { ok: false, error: (e as Error).message };
@@ -139,16 +220,33 @@ function ejecutarCodigo(code: string): Result<string, string> {
       case "cargar":
       case "load":
         try {
-          const nombre = tokens.peek();
+          const nombre = peek();
           if (!nombre) {
             throw new InstOcupaNombre(tok);
           }
           if (!(nombre in memoria)) {
             throw new NombreNoExistEnMemoria(tok, nombre);
           }
-          tokens.shift()!;
+          pop()!;
           const x = memoria[nombre];
           pila.push(x);
+        } catch (e) {
+          return { ok: false, error: (e as Error).message };
+        }
+        break;
+
+      case "liberar":
+      case "free":
+        try {
+          const nombre = peek();
+          if (!nombre) {
+            throw new InstOcupaNombre(tok);
+          }
+          if (!(nombre in memoria)) {
+            throw new NombreNoExistEnMemoria(tok, nombre);
+          }
+          pop()!;
+          delete memoria[nombre];
         } catch (e) {
           return { ok: false, error: (e as Error).message };
         }
