@@ -48,3 +48,18 @@ body {
   padding: 1rem;
 }
 
+.text-center {
+  text-align: center;
+}
+
+@media screen and (width >= 768px) {
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media screen and (width >= 1024px) {
+  .lg\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+

@@ -198,7 +198,7 @@ function App() {
   inpCodigo.value = codigoAnterior;
   ejecutarEImprimirResultado(codigoAnterior);
   E("#app", {
-    classes: "p-4 grid grid-cols-2 gap-4",
+    classes: "p-4 grid lg:grid-cols-2 gap-4",
     children: [
       E("label", {
         classes: "flex flex-col",
