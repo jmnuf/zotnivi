@@ -64,7 +64,7 @@ function ejecutarCodigo(code: string): Result<string, string> {
   const pila: number[] & { peek(): number | undefined; } = [] as any;
   pila.peek = () => pila[pila.length - 1];
   // TODO: Encontrar una mejorar manera de hacer las funciones peek, pop
-  const peek = () => {
+  const peek = (): string | undefined => {
     if (tokens.length === 0) return undefined;
     while (tokens.length > 0 && tokens[0] === ";") {
       tokens.shift();
@@ -87,7 +87,8 @@ function ejecutarCodigo(code: string): Result<string, string> {
     }
     return tok;
   }
-  const pop = () => {
+
+  const pop = (): string | undefined => {
     let tok = tokens.shift();
     while (tok && tok === ";") {
       tok = tokens.shift();
@@ -105,6 +106,7 @@ function ejecutarCodigo(code: string): Result<string, string> {
     }
     return tok;
   }
+
   while (tokens.length > 0) {
     const tok = pop()!;
     switch (tok) {
@@ -123,6 +125,17 @@ function ejecutarCodigo(code: string): Result<string, string> {
           pila.push(num);
         } catch (e) {
           // console.log("Tokens:", tokens);
+          return { ok: false, error: (e as Error).message };
+        }
+        break;
+
+      case "voltear":
+      case "swap":
+        try {
+          const [second, first] = requiereDosNumeros(tok, pila);
+          pila.push(first);
+          pila.push(second);
+        } catch (e) {
           return { ok: false, error: (e as Error).message };
         }
         break;
